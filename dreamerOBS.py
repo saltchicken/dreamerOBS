@@ -30,53 +30,33 @@ class ControlnetRequest:
 def call_stable_diffusion(queue, stop_signal):
     while not stop_signal.is_set():
         try:
-            # with tempfile.TemporaryDirectory() as temp_dir:
             control_net = ControlnetRequest(prompt, neg_prompt)
             control_net.build_body()
             output = control_net.send_request()
 
             result = output['images'][0]
-            # print(f'Parameters: {output["parameters"]}')
-            # print(f'Info: {output["info"]}')
-            
-            
-            # TODO: Find a better way to translate results to QPixmap without saving file
-            # self.current_info = json.loads(output["info"])
-            pil_image = Image.open(io.BytesIO(base64.b64decode(result.split(",", 1)[0])))
+
+            image = Image.open(io.BytesIO(base64.b64decode(result.split(",", 1)[0])))
             temp_file = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
-            try:
-                # Write some data to the temporary file
-                # temp_file.write(b"Hello, World!")
+            image.save(temp_file)
+            temp_file.close()
 
-                # Close the temporary file explicitly
-                # print("Temporary file has been deleted.")
-                pil_image.save(temp_file)
-                temp_file.close()
-
-                # Now you can use the temporary file for reading, for example:
-
-                # Don't forget to delete the temporary file when you're done with it
-                # Note that you can't delete it while it's open
-                ############################################################################################################
-                # import os
-                # os.remove(temp_file.name)
-
-            except Exception as e:
-                print("An error occurred:", str(e))
-
-            
-            
+            # Don't forget to delete the temporary file when you're done with it
+            # Note that you can't delete it while it's open
+            ############################################################################################################
+            # import os
+            # os.remove(temp_file.name)
+                     
         except Exception as e:
             print(f"Error: {e}")
             break   
         queue.put(temp_file.name)
-    print('thread stopping')
+    print('Thread Ended')
     
 def check_queue():
     if not queue.empty():
-        item = queue.get()
-        print(f"Got item from the queue: {item}")
-        set_image(item)
+        file_name = queue.get()
+        set_image(file_name)
         switch_scenes()
     else:
         # print("The queue is empty.")
@@ -88,7 +68,6 @@ def set_image(file_name):
         source_name = "Image_Flop"
     else:
         source_name = "Image_Flip"
-    print('etting image')
     imageSource = obs.obs_get_source_by_name(source_name)
     settings = obs.obs_source_get_settings(imageSource)
     obs.obs_data_set_string(settings, 'file', file_name)
@@ -108,8 +87,6 @@ def script_load(settings):
     stop_signal = threading.Event()
     stop_signal.set()
     obs.timer_add(check_queue, 1000)
-    
-    
     
 def script_unload():
     print("Script unloaded")
@@ -153,7 +130,6 @@ def toggle_thread_button(properties, property):
     if not stop_signal.is_set():
         stop_signal.set()
     else:
-        print("start the thread")
         stop_signal.clear()
         # TODO: Find way to close this gracefully
         stable_diffusion_thread = threading.Thread(target=call_stable_diffusion, args=(queue, stop_signal))
@@ -165,4 +141,3 @@ def change_scene(scene_name):
             # current_scene = obs.obs_frontend_get_current_scene()
             # scenes.remove(current_scene)
             obs.obs_frontend_set_current_scene(scene)
-
