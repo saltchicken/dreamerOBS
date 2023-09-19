@@ -1,5 +1,5 @@
 import obspython as obs
-import threading, queue, requests, tempfile, base64, io
+import threading, queue, requests, tempfile, base64, io, time
 from PIL import Image
 
 class ControlnetRequest:
@@ -16,11 +16,17 @@ class ControlnetRequest:
             "batch_size": 1,
             "steps": 15,
             "cfg_scale": 7,
-            "width": 768,
+            "width": 896,
             "height": 512,
-            # "seed": 1992241092
+            # "seed": 1992241092,
+            "seed": -1,
             # "subseed": -1,
-            # "subseed_strength": 0,
+            # "subseed_strength": 0.15,
+            "enable_hr": "true",
+            "hr_upscaler": "Latent",
+            "hr_scale": 2.15,
+            "denoising_strength": 0.7,
+            
         }
 
     def send_request(self):
@@ -49,7 +55,9 @@ def call_stable_diffusion(queue, stop_signal):
                      
         except Exception as e:
             print(f"Error: {e}")
-            break   
+            break
+        # TODO: Need a better way to create intervals between transitions.
+        time.sleep(5)   
         queue.put(temp_file.name)
     print('Thread Ended')
     
