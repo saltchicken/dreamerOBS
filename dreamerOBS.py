@@ -35,6 +35,7 @@ class ControlnetRequest:
 
 def call_stable_diffusion(queue, stop_signal):
     while not stop_signal.is_set():
+        start_time = time.time()
         try:
             control_net = ControlnetRequest(prompt, neg_prompt)
             control_net.build_body()
@@ -56,8 +57,10 @@ def call_stable_diffusion(queue, stop_signal):
         except Exception as e:
             print(f"Error: {e}")
             break
-        # TODO: Need a better way to create intervals between transitions.
-        time.sleep(5)   
+        process_time = time.time() - start_time
+        while not stop_signal.is_set() and process_time < frequency:
+            time.sleep(1)
+            process_time += 1
         queue.put(temp_file.name)
     print('Thread Ended')
     
@@ -95,6 +98,8 @@ def script_load(settings):
     stop_signal = threading.Event()
     stop_signal.set()
     obs.timer_add(check_queue, 1000)
+    global frequency
+    frequency = 0
     
 def script_unload():
     print("Script unloaded")
@@ -104,6 +109,7 @@ def script_properties():
     # obs.obs_properties_add_button(properties, 'test button', "Test", test_button)
     # obs.obs_properties_add_button(properties, 'enable button', "Enable", enable_button)
     obs.obs_properties_add_button(properties, 'toggle thread button', "Toggle Thread", toggle_thread_button)
+    obs.obs_properties_add_int(properties, 'frequency', "Frequency", 1, 100, 1)
     # current_scene = obs.obs_frontend_get_current_scene()
     obs.obs_properties_add_text(properties, 'prompt', 'Prompt', obs.OBS_TEXT_DEFAULT)
     obs.obs_properties_add_text(properties, 'neg_prompt', 'Neg Prompt', obs.OBS_TEXT_DEFAULT)
@@ -118,6 +124,8 @@ def script_update(settings):
     prompt = obs.obs_data_get_string(settings, 'prompt')
     global neg_prompt
     neg_prompt = obs.obs_data_get_string(settings, 'neg_prompt')
+    global frequency
+    frequency = obs.obs_data_get_int(settings, 'frequency')
 
     
 # def test_button(properties, property):
