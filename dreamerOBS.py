@@ -1,6 +1,7 @@
 import obspython as obs
 import threading, queue, requests, tempfile, base64, io, time
 from PIL import Image
+import cv2
 
 class ControlnetRequest:
     def __init__(self, prompt, neg_prompt):
@@ -32,6 +33,35 @@ class ControlnetRequest:
     def send_request(self):
         response = requests.post(url=self.url, json=self.body)
         return response.json()
+    
+    def add_control(self, image_path):
+        self.control_image = image_path
+        self.body['alwayson_scripts'] = {
+                "controlnet": {
+                    "args": [
+                        {
+                            "enabled": True,
+                            "module": "lineart",
+                            "model": "lineart",
+                            "weight": 1.0,
+                            "image": self.read_image(),
+                            "resize_mode": 1,
+                            "lowvram": False,
+                            "processor_res": 512,
+                            "guidance_start": 0.0,
+                            "guidance_end": 1.0,
+                            "control_mode": 0,
+                            "pixel_perfect": True
+                        }
+                    ]
+                }
+            }
+    
+    def read_image(self):
+        img = cv2.imread(self.control_image)
+        retval, bytes = cv2.imencode('.png', img)
+        encoded_image = base64.b64encode(bytes).decode('utf-8')
+        return encoded_image
 
 def call_stable_diffusion(queue, stop_signal):
     while not stop_signal.is_set():
@@ -39,6 +69,7 @@ def call_stable_diffusion(queue, stop_signal):
         try:
             control_net = ControlnetRequest(prompt, neg_prompt)
             control_net.build_body()
+            # control_net.add_control()
             output = control_net.send_request()
 
             result = output['images'][0]
@@ -101,6 +132,8 @@ def script_load(settings):
     obs.timer_add(check_queue, 1000)
     global frequency
     frequency = 0
+    import os
+    print(os.getcwd())
     
 def script_unload():
     print("Script unloaded")
