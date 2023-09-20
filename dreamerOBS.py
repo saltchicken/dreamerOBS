@@ -61,7 +61,8 @@ def call_stable_diffusion(queue, stop_signal):
         while not stop_signal.is_set() and process_time < frequency:
             time.sleep(1)
             process_time += 1
-        queue.put(temp_file.name)
+        if not stop_signal.is_set():
+            queue.put(temp_file.name)
     print('Thread Ended')
     
 def check_queue():
