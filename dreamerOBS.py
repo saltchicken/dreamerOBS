@@ -3,6 +3,8 @@ import threading, queue, requests, tempfile, base64, io, time
 from PIL import Image
 import cv2
 
+lock = threading.Lock()
+
 class ControlnetRequest:
     def __init__(self, prompt, neg_prompt):
         self.url = "http://localhost:7860/sdapi/v1/txt2img"
@@ -69,7 +71,9 @@ def call_stable_diffusion(queue, stop_signal):
         try:
             control_net = ControlnetRequest(prompt, neg_prompt)
             control_net.build_body()
-            # control_net.add_control()
+            print(control_image)
+            if control_image != '':
+                control_net.add_control(control_image)
             output = control_net.send_request()
 
             result = output['images'][0]
@@ -147,6 +151,7 @@ def script_properties():
     # current_scene = obs.obs_frontend_get_current_scene()
     obs.obs_properties_add_text(properties, 'prompt', 'Prompt', obs.OBS_TEXT_DEFAULT)
     obs.obs_properties_add_text(properties, 'neg_prompt', 'Neg Prompt', obs.OBS_TEXT_DEFAULT)
+    obs.obs_properties_add_text(properties, 'control_image', 'Control Image', obs.OBS_TEXT_DEFAULT)
     return properties
 
 def script_update(settings):
@@ -160,6 +165,10 @@ def script_update(settings):
     neg_prompt = obs.obs_data_get_string(settings, 'neg_prompt')
     global frequency
     frequency = obs.obs_data_get_int(settings, 'frequency')
+    lock.acquire()
+    global control_image
+    control_image = obs.obs_data_get_string(settings, 'control_image')
+    lock.release()
 
     
 # def test_button(properties, property):
