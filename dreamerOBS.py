@@ -26,7 +26,7 @@ class ControlnetRequest:
             # "subseed": -1,
             # "subseed_strength": 0.15,
             "enable_hr": "true",
-            "hr_upscaler": "Latent",
+            "hr_upscaler": "4x-UltraSharp",
             "hr_scale": 2.15,
             "denoising_strength": 0.7,
             
